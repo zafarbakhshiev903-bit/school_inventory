@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-8">
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Инвентар</h1>
+            <p class="text-gray-600 mt-2">Идораи амволи мактабӣ</p>
+        </div>
+        <a href="{{ url_for('add_inventory') }}" 
+           class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+            <i class="fas fa-plus"></i>
+            <span>Иловаи ашё</span>
+        </a>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 mb-6">
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Search Input -->
+            <div class="relative">
+                <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="text" 
+                       name="search" 
+                       value="{{ request.args.get('search', '') }}" 
+                       placeholder="Ҷустуҷӯ аз рӯи ном ё тавсиф..."
+                       class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            
+            <!-- Category Filter -->
+            <select name="category" 
+                    class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="">Ҳамаи категорияҳо</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}" {% if selected_category_id == category.id %}selected{% endif %}>
+                    {{ category.name }}
+                </option>
+                {% endfor %}
+            </select>
+            
+            <!-- Status Filter -->
+            <select name="status" 
+                    class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="">Ҳамаи статусҳо</option>
+                <option value="available" {% if request.args.get('status') == 'available' %}selected{% endif %}>Дастрас</option>
+                <option value="maintenance" {% if request.args.get('status') == 'maintenance' %}selected{% endif %}>Таъмир</option>
+                <option value="disposed" {% if request.args.get('status') == 'disposed' %}selected{% endif %}>Аз ҳисоб бароварда шудааст</option>
+            </select>
+            
+            <!-- Filter Button -->
+            <button type="submit" 
+                    class="flex items-center justify-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition-colors">
+                <i class="fas fa-filter"></i>
+                <span>Истифода бурдан</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Inventory Items List -->
+    <div class="grid grid-cols-1 gap-4">
+        {% for item in items %}
+        <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <!-- Item Header -->
+                    <div class="flex items-center space-x-3 mb-2">
+                        <h3 class="text-lg font-semibold text-gray-800">{{ item.name }}</h3>
+                        <!-- Condition Badge -->
+                        {% set condition_classes = {
+                            'excellent': ('bg-green-100', 'text-green-800', 'Аъло'),
+                            'good': ('bg-blue-100', 'text-blue-800', 'Хуб'),
+                            'fair': ('bg-yellow-100', 'text-yellow-800', 'Қаноатбахш'),
+                            'poor': ('bg-red-100', 'text-red-800', 'Бад')
+                        } %}
+                        {% set bg_class, text_class, label = condition_classes[item.condition] %}
+                        <span class="px-2 py-1 rounded-full text-xs font-medium {{ bg_class }} {{ text_class }}">
+                            {{ label }}
+                        </span>
+
+                        <!-- Low Stock Warning -->
+                        {% if item.available_quantity <= item.min_quantity %}
+                        <div class="flex items-center space-x-1 text-amber-600">
+                            <i class="fas fa-exclamation-triangle text-sm"></i>
+                            <span class="text-xs font-medium">Кам дар захира</span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Reservable Badge -->
+                        {% if item.is_reservable %}
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <i class="fas fa-calendar-check mr-1"></i>Барои резервасия
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Item Description -->
+                    <p class="text-gray-600 mb-3">{{ item.description }}</p>
+                    
+                    <!-- Item Details Grid -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <!-- Quantity Info -->
+                        <div>
+                            <p class="text-gray-500 font-medium">Миқдор</p>
+                            <p class="text-gray-800 font-semibold">{{ item.quantity }} дона</p>
+                            <p class="text-xs text-gray-500">Дастрас: {{ item.available_quantity }}</p>
+                        </div>
+                        
+                        <!-- Category Info -->
+                        <div>
+                            <p class="text-gray-500 font-medium">Категория</p>
+                            <p class="text-gray-800">{{ item.category.name }}</p>
+                        </div>
+                        
+                        <!-- Location Info -->
+                        <div class="flex items-center">
+                            <i class="fas fa-map-marker-alt text-gray-400 mr-1"></i>
+                            <div>
+                                <p class="text-gray-500 font-medium">Ҷойгиршавӣ</p>
+                                <p class="text-gray-800">{{ item.location or 'Нишон дода нашудааст' }}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Responsible Person Info -->
+                        <div class="flex items-center">
+                            <i class="fas fa-user text-gray-400 mr-1"></i>
+                            <div>
+                                <p class="text-gray-500 font-medium">Шахси масъул</p>
+                                <p class="text-gray-800">{{ item.responsible_person or 'Таъин нашудааст' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Item Footer -->
+                    <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                        <div class="flex items-center space-x-4">
+                            <!-- Status Indicator -->
+                            <div class="flex items-center space-x-2">
+                                {% set status_info = {
+                                    'available': ('check-circle', 'green', 'Дастрас'),
+                                    'maintenance': ('wrench', 'amber', 'Таъмир'),
+                                    'disposed': ('times-circle', 'red', 'Аз ҳисоб бароварда шудааст')
+                                } %}
+                                {% set icon, color, label = status_info[item.status] %}
+                                <i class="fas fa-{{ icon }} text-{{ color }}-500"></i>
+                                <span class="text-sm text-gray-600">{{ label }}</span>
+                            </div>
+
+                            <!-- Additional Info -->
+                            {% if item.purchase_price %}
+                            <div class="text-sm text-gray-500">
+                                Арзиш: {{ "{:,.0f}".format(item.purchase_price) }}₽
+                            </div>
+                            {% endif %}
+                            
+                            {% if item.barcode %}
+                            <div class="text-sm text-gray-500">
+                                Штрих-код: {{ item.barcode }}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex space-x-2">
+                            <a href="{{ url_for('edit_inventory', item_id=item.id) }}" 
+                               class="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors">
+                                <i class="fas fa-edit mr-1"></i>
+                                Таҳрир кардан
+                            </a>
+
+                            {% if item.is_reservable and item.available_quantity > 0 %}
+                            <a href="{{ url_for('add_reservation') }}?item_id={{ item.id }}" 
+                               class="px-3 py-1 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors">
+                                <i class="fas fa-calendar-plus mr-1"></i>
+                                Резерв кардан
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <!-- Empty State -->
+        {% if not items %}
+        <div class="text-center py-12">
+            <i class="fas fa-boxes text-6xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 text-lg">Ашё ёфт нашуд</p>
+            <p class="text-gray-400">Кӯшиш кунед, ки параметрҳои ҷустуҷӯро тағйир диҳед</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

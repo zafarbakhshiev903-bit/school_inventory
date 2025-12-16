@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-8">
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Чорабиниҳо</h1>
+            <p class="text-gray-600 mt-2">Рӯйдодҳо ва огоҳиҳои мактаб</p>
+        </div>
+        {% if current_user.role in ['admin', 'teacher'] %}
+        <a href="{{ url_for('add_event') }}" 
+           class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200">
+            <i class="fas fa-plus"></i>
+            <span>Эҷоди чорабинӣ</span>
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Upcoming Events Section -->
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            <i class="fas fa-calendar-alt mr-2"></i>
+            Чорабиниҳои дарпешистода
+        </h2>
+        
+        <div class="grid grid-cols-1 gap-4">
+            {% set event_types = {
+                'meeting': ('users', 'blue', 'Ҷамъомад'),
+                'excursion': ('bus', 'green', 'Саёҳат'),
+                'olympiad': ('trophy', 'yellow', 'Олимпиада'),
+                'parent_meeting': ('users', 'purple', 'Волидайн'),
+                'other': ('calendar', 'gray', 'Дигар')
+            } %}
+
+            {% for event in upcoming_events %}
+            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-all duration-200">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <!-- Event Header -->
+                        <div class="flex items-center space-x-3 mb-3">
+                            {% set icon, color, label = event_types[event.event_type] %}
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center bg-{{ color }}-100">
+                                <i class="fas fa-{{ icon }} text-{{ color }}-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-800">{{ event.title }}</h3>
+                                <span class="px-2 py-1 rounded-full text-xs font-medium bg-{{ color }}-100 text-{{ color }}-800">
+                                    {{ label }}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Event Description -->
+                        {% if event.description %}
+                        <p class="text-gray-600 mb-3">{{ event.description }}</p>
+                        {% endif %}
+                        
+                        <!-- Event Details -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-clock text-gray-400"></i>
+                                <div>
+                                    <p class="text-gray-500 font-medium">Сана ва вақт</p>
+                                    <p class="text-gray-800">{{ event.start_time.strftime('%d.%m.%Y %H:%M') }}</p>
+                                    {% if event.end_time %}
+                                    <p class="text-gray-600 text-xs">то {{ event.end_time.strftime('%H:%M') }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {% if event.location %}
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-map-marker-alt text-gray-400"></i>
+                                <div>
+                                    <p class="text-gray-500 font-medium">Ҷой</p>
+                                    <p class="text-gray-800">{{ event.location }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if event.target_audience %}
+                            <div class="flex items-center space-x-2">
+                                <i class="fas fa-users text-gray-400"></i>
+                                <div>
+                                    <p class="text-gray-500 font-medium">Махсус барои</p>
+                                    <p class="text-gray-800">{{ event.target_audience }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Event Footer -->
+                        <div class="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                            <div class="flex items-center space-x-4 text-sm text-gray-500">
+                                <span>Сохта шудааст: {{ event.created_at.strftime('%d.%m.%Y') }}</span>
+                                {% if event.send_notifications %}
+                                <div class="flex items-center space-x-1">
+                                    <i class="fas fa-bell text-green-500"></i>
+                                    <span class="text-green-600">Огоҳиҳо фаъоланд</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if current_user.role in ['admin', 'teacher'] %}
+                            <div class="flex items-center space-x-2">
+                                <a href="{{ url_for('edit_event', event_id=event.id) }}" 
+                                   class="text-blue-600 hover:text-blue-700 transition-colors">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% if not upcoming_events %}
+            <div class="text-center py-8 bg-gray-50 rounded-xl border border-gray-200">
+                <i class="fas fa-calendar-times text-4xl text-gray-300 mb-3"></i>
+                <p class="text-gray-500">Чорабинии дарпешистода нест</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Past Events Section -->
+    {% if past_events %}
+    <div>
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            <i class="fas fa-history mr-2"></i>
+            Чорабиниҳои гузашта
+        </h2>
+        
+        <div class="grid grid-cols-1 gap-3">
+            {% for event in past_events %}
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors duration-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        {% set icon, color, _ = event_types[event.event_type] %}
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center bg-gray-200">
+                            <i class="fas fa-{{ icon }} text-gray-600 text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-800">{{ event.title }}</h4>
+                            <p class="text-sm text-gray-600">{{ event.start_time.strftime('%d.%m.%Y %H:%M') }}</p>
+                        </div>
+                    </div>
+                    {% if event.location %}
+                    <p class="text-sm text-gray-500">
+                        <i class="fas fa-map-marker-alt mr-1"></i>
+                        {{ event.location }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

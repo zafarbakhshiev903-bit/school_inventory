@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="tj">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Системаи баҳисобгирии мактабӣ">
+    <meta name="theme-color" content="#3B82F6">
+    <meta name="author" content="School Inventory System">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{% block title %}Баҳисобгирии (Инвентаризатсияи) мактабӣ{% endblock %}</title>
+    
+    <!-- Stylesheets -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #3B82F6;
+            --sidebar-width: 16rem;
+            --transition-duration: 0.2s;
+        }
+
+        .sidebar-active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .notification {
+            animation: slideIn 0.3s ease-out;
+            transition: opacity 0.3s, transform 0.3s;
+            max-width: 24rem;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .hover-transition {
+            transition: all var(--transition-duration) ease-in-out;
+        }
+
+        /* Improved scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+
+        /* Print styles */
+        @media print {
+            .sidebar, .notification {
+                display: none !important;
+            }
+            .ml-64 {
+                margin-left: 0 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 antialiased">
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-800 text-white fixed h-full overflow-y-auto z-20">
+            <div class="p-6 border-b border-gray-700">
+                <a href="{{ url_for('dashboard') }}" class="block">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center hover-transition hover:bg-blue-700">
+                            <i class="fas fa-boxes text-white"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold">Мактабӣ</h1>
+                            <p class="text-sm text-gray-300">Баҳисобгирӣ (Инвентар)</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            
+            <nav class="mt-6" aria-label="Main navigation">
+                {% set nav_items = [
+                    ('dashboard', 'fas fa-tachometer-alt', 'Панели идоракунӣ'),
+                    ('inventory', 'fas fa-boxes', 'Инвентар'),
+                    ('reservations', 'fas fa-calendar-check', 'Бақайдгириҳо'),
+                    ('events', 'fas fa-calendar-alt', 'Чорабиниҳо'),
+                    ('reports', 'fas fa-chart-bar', 'Ҳисоботҳо')
+                ] %}
+                
+                {% for route, icon, label in nav_items %}
+                <a href="{{ url_for(route) }}" 
+                   class="flex items-center space-x-3 px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white hover-transition {% if request.endpoint == route %}sidebar-active{% endif %}"
+                   aria-current="{{ 'page' if request.endpoint == route else 'false' }}">
+                    <i class="{{ icon }} w-5" aria-hidden="true"></i>
+                    <span>{{ label }}</span>
+                </a>
+                {% endfor %}
+            </nav>
+            
+            <div class="absolute bottom-0 w-64 p-6 border-t border-gray-700 bg-gray-800">
+                <div class="flex items-center space-x-3 mb-3">
+                    <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-sm" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium">{{ current_user.full_name }}</p>
+                        <p class="text-xs text-gray-400">{{ current_user.role|title }}</p>
+                    </div>
+                </div>
+                <a href="{{ url_for('logout') }}" 
+                   class="flex items-center space-x-2 text-gray-300 hover:text-white text-sm hover-transition"
+                   title="Баромадан аз система">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                    <span>Баромадан</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 ml-64 relative min-h-screen">
+            <!-- Notifications -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="fixed top-4 right-4 z-50 space-y-2" role="alert" aria-live="polite">
+                        {% for category, message in messages %}
+                            <div class="notification bg-{{ category if category else 'green' }}-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center">
+                                <span>{{ message }}</span>
+                                <button class="ml-4 text-white hover:text-gray-200 focus:outline-none" onclick="this.parentElement.remove()">
+                                    <i class="fas fa-times" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Enhanced notification handling
+            const notifications = document.querySelectorAll('.notification');
+            
+            notifications.forEach(notification => {
+                // Add close button functionality
+                const closeBtn = notification.querySelector('button');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        notification.style.opacity = '0';
+                        notification.style.transform = 'translateX(100%)';
+                        setTimeout(() => notification.remove(), 300);
+                    });
+                }
+                
+                // Auto-dismiss after 5 seconds
+                setTimeout(() => {
+                    if (notification.isConnected) {
+                        notification.style.opacity = '0';
+                        notification.style.transform = 'translateX(100%)';
+                        setTimeout(() => notification.remove(), 300);
+                    }
+                }, 5000);
+            });
+
+            // Add keyboard navigation for sidebar
+            const navLinks = document.querySelectorAll('nav a');
+            navLinks.forEach((link, index) => {
+                link.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowDown' && index < navLinks.length - 1) {
+                        e.preventDefault();
+                        navLinks[index + 1].focus();
+                    } else if (e.key === 'ArrowUp' && index > 0) {
+                        e.preventDefault();
+                        navLinks[index - 1].focus();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

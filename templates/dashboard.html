@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-8">
+    <!-- Header Section -->
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Панели идоракунӣ</h1>
+            <p class="text-gray-600 mt-2">Шарҳи инвентаризатсияи мактабӣ</p>
+        </div>
+        <div class="flex space-x-4">
+            <button class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-200">
+                <i class="fas fa-sync-alt"></i>
+                <span>Навсозӣ</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Total Items Card -->
+        <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Ҳамаи ашёҳо</p>
+                    <p class="text-2xl font-bold text-gray-800">{{ total_items }}</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-boxes text-blue-600 text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <i class="fas fa-arrow-up text-green-500 mr-1"></i>
+                <span class="text-green-600">Миқдори умумӣ</span>
+            </div>
+        </div>
+
+        <!-- Available Items Card -->
+        <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Дастрас</p>
+                    <p class="text-2xl font-bold text-gray-800">{{ available_items }}</p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-gray-600">Барои истифода омода</span>
+            </div>
+        </div>
+
+        <!-- Low Stock Items Card -->
+        <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Миқдори кам дар анбор</p>
+                    <p class="text-2xl font-bold text-gray-800">{{ low_stock_items }}</p>
+                </div>
+                <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-amber-600 text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-amber-600">Таваҷҷӯҳро талаб мекунад</span>
+            </div>
+        </div>
+
+        <!-- Active Reservations Card -->
+        <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-medium">Резервасияҳои фаъол</p>
+                    <p class="text-2xl font-bold text-gray-800">{{ active_reservations }}</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-calendar-check text-purple-600 text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center text-sm">
+                <span class="text-gray-600">Дар истифода</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity and Events Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Recent Activity Section -->
+        <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">
+                    <i class="fas fa-history mr-2"></i>
+                    Фаъолияти охирин
+                </h3>
+                <button class="text-blue-600 hover:text-blue-700 text-sm">
+                    Ҳамаро дидан
+                </button>
+            </div>
+            <div class="space-y-4">
+                {% for log in recent_logs %}
+                <div class="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center
+                        {% if log.action == 'added' %}bg-green-100
+                        {% elif log.action == 'reserved' %}bg-blue-100
+                        {% elif log.action == 'returned' %}bg-purple-100{% endif %}">
+                        <i class="fas fa-{{ 
+                            'plus' if log.action == 'added' 
+                            else 'calendar' if log.action == 'reserved'
+                            else 'undo' if log.action == 'returned'
+                        }} text-{{ 
+                            'green' if log.action == 'added'
+                            else 'blue' if log.action == 'reserved'
+                            else 'purple' if log.action == 'returned'
+                        }}-600 text-sm"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-800">
+                            {{ {
+                                'added': 'Ашё илова шуд',
+                                'reserved': 'Резервасия шуд',
+                                'returned': 'Баргардонида шуд'
+                            }[log.action] }}
+                        </p>
+                        <p class="text-xs text-gray-600">{{ log.item.name }} - {{ log.user.full_name }}</p>
+                    </div>
+                    <p class="text-xs text-gray-500">{{ log.timestamp.strftime('%d.%m %H:%M') }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Upcoming Events Section -->
+        <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-800">
+                    <i class="fas fa-calendar-alt mr-2"></i>
+                    Чорабиниҳои дарпешистода
+                </h3>
+                <button class="text-blue-600 hover:text-blue-700 text-sm">
+                    Тақвим
+                </button>
+            </div>
+            <div class="space-y-4">
+                {% for event in upcoming_events %}
+                <div class="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center bg-{{ 
+                        'blue' if event.event_type == 'meeting'
+                        else 'green' if event.event_type == 'excursion'
+                        else 'yellow' if event.event_type == 'olympiad'
+                        else 'purple' if event.event_type == 'parent_meeting'
+                    }}-100">
+                        <i class="fas fa-{{ 
+                            'users' if event.event_type == 'meeting'
+                            else 'bus' if event.event_type == 'excursion'
+                            else 'trophy' if event.event_type == 'olympiad'
+                            else 'users' if event.event_type == 'parent_meeting'
+                        }} text-{{ 
+                            'blue' if event.event_type == 'meeting'
+                            else 'green' if event.event_type == 'excursion'
+                            else 'yellow' if event.event_type == 'olympiad'
+                            else 'purple' if event.event_type == 'parent_meeting'
+                        }}-600 text-sm"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-800">{{ event.title }}</p>
+                        <p class="text-xs text-gray-600">{{ event.start_time.strftime('%d.%m.%Y %H:%M') }}</p>
+                        {% if event.location %}
+                        <p class="text-xs text-gray-500">
+                            <i class="fas fa-map-marker-alt mr-1"></i>
+                            {{ event.location }}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                {% if not upcoming_events %}
+                <div class="flex flex-col items-center justify-center py-8 text-gray-500">
+                    <i class="fas fa-calendar-times text-4xl mb-2"></i>
+                    <p>Чорабинии дарпешистода нест</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

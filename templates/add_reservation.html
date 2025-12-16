@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-8">
+    <!-- Header Section -->
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Бронкунии нав</h1>
+            <p class="text-gray-600 mt-2">Бақайдгирии ашё барои истифода</p>
+        </div>
+        <a href="{{ url_for('reservations') }}" class="text-gray-600 hover:text-gray-800 transition-colors">
+            <i class="fas fa-times-circle text-xl"></i>
+        </a>
+    </div>
+
+    <div class="max-w-2xl">
+        <div class="bg-white p-8 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-all duration-200">
+            <form method="POST" class="space-y-6" id="reservationForm">
+                {{ form.hidden_tag() }}
+                
+                <!-- Item Selection -->
+                <div class="form-group">
+                    {{ form.item_id.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                    {{ form.item_id(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200") }}
+                </div>
+                
+                <!-- Reservation Period -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="form-group">
+                        {{ form.start_time.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        {{ form.start_time(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200") }}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.end_time.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        {{ form.end_time(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200") }}
+                    </div>
+                </div>
+                
+                <!-- Quantity and Purpose -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="form-group">
+                        {{ form.quantity.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        {{ form.quantity(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200", type="number", min="1") }}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.purpose.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        {{ form.purpose(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200", rows="2") }}
+                    </div>
+                </div>
+                
+                <!-- Notes -->
+                <div class="form-group">
+                    {{ form.notes.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                    {{ form.notes(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200", rows="3") }}
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="flex space-x-4 pt-6">
+                    <button type="submit" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200">
+                        <i class="fas fa-save"></i>
+                        <span>Сабт кардан</span>
+                    </button>
+                    
+                    <a href="{{ url_for('reservations') }}" class="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors duration-200">
+                        <i class="fas fa-times"></i>
+                        <span>Бекор кардан</span>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('reservationForm');
+    const startTime = form.querySelector('[name="start_time"]');
+    const endTime = form.querySelector('[name="end_time"]');
+
+    // Set default dates
+    const now = new Date();
+    if (!startTime.value) {
+        startTime.value = now.toISOString().slice(0, 16);
+    }
+    if (!endTime.value) {
+        const tomorrow = new Date(now);
+        tomorrow.setHours(now.getHours() + 1);
+        endTime.value = tomorrow.toISOString().slice(0, 16);
+    }
+
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        const start = new Date(startTime.value);
+        const end = new Date(endTime.value);
+        
+        if (end <= start) {
+            e.preventDefault();
+            alert('Вақти анҷом бояд аз вақти оғоз дертар бошад');
+        }
+    });
+});
+</script>
+{% endblock %}

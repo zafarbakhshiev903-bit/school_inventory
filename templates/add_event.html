@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-8">
+    <!-- Header Section -->
+    <div class="mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800">Сохтани чорабинӣ</h1>
+            <p class="text-gray-600 mt-2">Иловаи як чорабинии нав</p>
+        </div>
+        <a href="{{ url_for('events') }}" class="text-gray-600 hover:text-gray-800 transition-colors">
+            <i class="fas fa-times-circle text-xl"></i>
+        </a>
+    </div>
+
+    <div class="max-w-2xl">
+        <div class="bg-white p-8 rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-all duration-200">
+            <form method="POST" class="space-y-6">
+                {{ form.hidden_tag() }}
+                
+                <!-- Title Field -->
+                <div class="form-group">
+                    {{ form.title.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                    {{ form.title(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200") }}
+                </div>
+                
+                <!-- Description Field -->
+                <div class="form-group">
+                    {{ form.description.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                    {{ form.description(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200", rows="3") }}
+                </div>
+                
+                <!-- Event Type and Target Audience -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="form-group">
+                        {{ form.event_type.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        {{ form.event_type(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200") }}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.target_audience.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        {{ form.target_audience(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200", placeholder="Масалан: ҳама, муаллимон, синфи 5А") }}
+                    </div>
+                </div>
+                
+                <!-- Date and Time Fields -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="form-group">
+                        {{ form.start_time.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        {{ form.start_time(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200") }}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.end_time.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        {{ form.end_time(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200") }}
+                    </div>
+                </div>
+                
+                <!-- Location Field -->
+                <div class="form-group">
+                    {{ form.location.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                    {{ form.location(class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200") }}
+                </div>
+                
+                <!-- Notifications Toggle -->
+                <div class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                    {{ form.send_notifications(class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer") }}
+                    {{ form.send_notifications.label(class="ml-2 text-sm font-medium text-gray-700 cursor-pointer") }}
+                </div>
+                
+                <!-- Info Box -->
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <div class="flex items-start space-x-3">
+                        <i class="fas fa-info-circle text-blue-500 mt-1"></i>
+                        <div>
+                            <h4 class="text-sm font-medium text-blue-800">Огоҳиномаҳо</h4>
+                            <p class="text-sm text-blue-700 mt-1">
+                                Ҳангоми фаъол кардани огоҳиномаҳо, ба ҳамаи корбарони система дар бораи чорабинии нав огоҳиномаи электронӣ фиристода мешавад.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="flex space-x-4 pt-6">
+                    <button type="submit" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200">
+                        <i class="fas fa-calendar-plus"></i>
+                        <span>Сохтани чорабинӣ</span>
+                    </button>
+                    
+                    <a href="{{ url_for('events') }}" class="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors duration-200">
+                        <i class="fas fa-times"></i>
+                        <span>Бекор кардан</span>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Enhanced datetime initialization
+    const now = new Date();
+    const startTime = document.querySelector('input[name="start_time"]');
+    const endTime = document.querySelector('input[name="end_time"]');
+    
+    function setDefaultDateTime(element, hoursToAdd) {
+        if (element && !element.value) {
+            const date = new Date(now.getTime() + (hoursToAdd * 60 * 60 * 1000));
+            element.value = date.toISOString().slice(0, 16);
+        }
+    }
+    
+    setDefaultDateTime(startTime, 24); // +1 day
+    setDefaultDateTime(endTime, 25);   // +1 day 1 hour
+    
+    // Add form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const start = new Date(startTime.value);
+        const end = new Date(endTime.value);
+        
+        if (end <= start) {
+            e.preventDefault();
+            alert('Вақти анҷом бояд аз вақти оғоз дертар бошад.');
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Бақайдгирӣ (Регистрация){% endblock %}
+
+{% block content %}
+    <div class="gradient-background min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg transform transition-all duration-300 hover:shadow-2xl">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 transform transition-transform hover:scale-105">
+                    <i class="fas fa-user-plus text-2xl text-white"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">Бақайдгирии корбари нав</h1>
+                <p class="text-gray-600 mt-2">Барои дастрасӣ ба система ҳисоб эҷод кунед</p>
+            </div>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="{% if category == 'danger' %}bg-red-100 border-red-400 text-red-700{% else %}bg-green-100 border-green-400 text-green-700{% endif %} 
+                                     border px-4 py-3 rounded mb-4 flex items-center justify-between" role="alert">
+                            <span>{{ message }}</span>
+                            <button onclick="this.parentElement.remove()" class="text-sm hover:text-gray-600 focus:outline-none">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('register') }}" class="space-y-4" novalidate>
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group">
+                    {{ form.username.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                    <div class="relative">
+                        <i class="fas fa-user absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        {{ form.username(class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent", placeholder="Номи корбар", required=true) }}
+                    </div>
+                    {% for error in form.username.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.email.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                    <div class="relative">
+                        <i class="fas fa-at absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        {{ form.email(class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent", placeholder="почта@школа.edu", required=true) }}
+                    </div>
+                    {% for error in form.email.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        {{ form.password.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        <div class="relative">
+                            <i class="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            {{ form.password(id="regPassword", class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent", required=true) }}
+                        </div>
+                        {% for error in form.password.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.confirm_password.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        <div class="relative">
+                            <i class="fas fa-lock absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            {{ form.confirm_password(id="confirmPassword", class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent", required=true) }}
+                        </div>
+                        {% for error in form.confirm_password.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    {{ form.full_name.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                    <div class="relative">
+                        <i class="fas fa-id-badge absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        {{ form.full_name(class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent", placeholder="Имя Фамилия Отчество", required=true) }}
+                    </div>
+                    {% for error in form.full_name.errors %}
+                        <p class="mt-1 text-sm text-red-600">{{ error }}</p>
+                    {% endfor %}
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="form-group">
+                        {{ form.department.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        <div class="relative">
+                            <i class="fas fa-building absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            {{ form.department(class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent", placeholder="Например, Кафедра Информатики") }}
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        {{ form.phone.label(class="block text-sm font-medium text-gray-700 mb-2") }}
+                        <div class="relative">
+                            <i class="fas fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            {{ form.phone(class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent", placeholder="+7 (700) 000-00-00") }}
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mt-4">
+                    <i class="fas fa-user-plus mr-2"></i>
+                    {{ form.submit.label }}
+                </button>
+            </form>
+            
+            <small class="text-muted d-block text-center mt-4">
+                Ҳисоб доред? 
+                <a href="{{ url_for('login') }}" class="text-blue-600 hover:text-blue-800 font-medium">
+                    Ба система дохил шавед
+                </a>
+            </small>
+        </div>
+    </div>
+{% endblock %}
