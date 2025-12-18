@@ -1104,11 +1104,42 @@ def create_initial_admin():
 # pip install pandas openpyxl
 # ... остальной код ...
 
+# ... весь ваш код ...
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
         create_initial_admin()
     
-    # Запуск в production режиме
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
+    # Определяем порт для Render
+    port = int(os.environ.get("PORT", 10000))
+    
+    # Запускаем приложение
+    if os.environ.get("RENDER"):
+        # В production на Render используем gunicorn
+        from gunicorn.app.base import BaseApplication
+        
+        class FlaskApplication(BaseApplication):
+            def __init__(self, app, options=None):
+                self.options = options or {}
+                self.application = app
+                super().__init__()
+            
+            def load_config(self):
+                for key, value in self.options.items():
+                    if key in self.cfg.settings and value is not None:
+                        self.cfg.set(key.lower(), value)
+            
+            def load(self):
+                return self.application
+        
+        options = {
+            "bind": f"0.0.0.0:{port}",
+            "workers": 1,
+            "timeout": 120,
+        }
+        
+        FlaskApplication(app, options).run()
+    else:
+        # В development режиме
+        app.run(debug=True, host="0.0.0.0", port=port)
