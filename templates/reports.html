@@ -9,10 +9,37 @@
             <p class="text-gray-600 mt-2">Таҳлил ва омор оид ба инвентар</p>
         </div>
         <div class="flex space-x-4">
-            <button class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200">
-                <i class="fas fa-download"></i>
-                <span>Содироти ҳисобот</span>
-            </button>
+            <div class="relative group">
+                <button class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200">
+                    <i class="fas fa-download"></i>
+                    <span>Содироти ҳисобот</span>
+                </button>
+                <!-- Dropdown menu for exports -->
+                <div class="absolute hidden group-hover:block mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                    <div class="py-1">
+                        <a href="{{ url_for('export_inventory') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600">
+                            <i class="fas fa-box mr-2 text-blue-500"></i>
+                            Инвентар
+                        </a>
+                        <a href="{{ url_for('export_reservations') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600">
+                            <i class="fas fa-calendar-alt mr-2 text-green-500"></i>
+                            Резерваҳо
+                        </a>
+                        <a href="{{ url_for('export_usage') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600">
+                            <i class="fas fa-history mr-2 text-purple-500"></i>
+                            Истифода
+                        </a>
+                        <a href="{{ url_for('export_low_stock') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600">
+                            <i class="fas fa-exclamation-triangle mr-2 text-amber-500"></i>
+                            Камии захира
+                        </a>
+                        <a href="{{ url_for('export_events') }}" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600">
+                            <i class="fas fa-calendar mr-2 text-indigo-500"></i>
+                            Чорабиниҳо
+                        </a>
+                    </div>
+                </div>
+            </div>
             <button class="flex items-center space-x-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium transition-colors duration-200">
                 <i class="fas fa-filter"></i>
                 <span>Филтр</span>
@@ -48,6 +75,75 @@
             <p class="text-xs text-gray-600 mt-1">дар система</p>
         </div>
     </div>
+
+    <!-- Export Section for Admin Users -->
+    {% if current_user.role == 'admin' %}
+    <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 mb-8 hover:shadow-lg transition-shadow duration-200">
+        <div class="flex items-center justify-between mb-6">
+            <h3 class="text-lg font-semibold text-gray-800">
+                <i class="fas fa-file-excel text-green-600 mr-2"></i>
+                Содироти ҳисоботҳо ба Excel
+            </h3>
+            <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                Администратор
+            </span>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <a href="{{ url_for('export_inventory') }}" class="flex flex-col items-center p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md hover:border-green-300 hover:bg-green-50 transition-all duration-200 group">
+                <div class="p-3 bg-green-100 rounded-full mb-3 group-hover:bg-green-200 transition-colors duration-200">
+                    <i class="fas fa-box text-green-600 text-xl"></i>
+                </div>
+                <h4 class="font-medium text-gray-800 text-center mb-1">Инвентар</h4>
+                <p class="text-xs text-gray-600 text-center">Ҳама ашёҳо</p>
+            </a>
+            
+            <a href="{{ url_for('export_reservations') }}" class="flex flex-col items-center p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 group">
+                <div class="p-3 bg-blue-100 rounded-full mb-3 group-hover:bg-blue-200 transition-colors duration-200">
+                    <i class="fas fa-calendar-alt text-blue-600 text-xl"></i>
+                </div>
+                <h4 class="font-medium text-gray-800 text-center mb-1">Резерваҳо</h4>
+                <p class="text-xs text-gray-600 text-center">Ҳама захираҳо</p>
+            </a>
+            
+            <a href="{{ url_for('export_usage') }}" class="flex flex-col items-center p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md hover:border-purple-300 hover:bg-purple-50 transition-all duration-200 group">
+                <div class="p-3 bg-purple-100 rounded-full mb-3 group-hover:bg-purple-200 transition-colors duration-200">
+                    <i class="fas fa-history text-purple-600 text-xl"></i>
+                </div>
+                <h4 class="font-medium text-gray-800 text-center mb-1">Истифода</h4>
+                <p class="text-xs text-gray-600 text-center">Таърихи истифода</p>
+            </a>
+            
+            <a href="{{ url_for('export_low_stock') }}" class="flex flex-col items-center p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md hover:border-amber-300 hover:bg-amber-50 transition-all duration-200 group">
+                <div class="p-3 bg-amber-100 rounded-full mb-3 group-hover:bg-amber-200 transition-colors duration-200">
+                    <i class="fas fa-exclamation-triangle text-amber-600 text-xl"></i>
+                </div>
+                <h4 class="font-medium text-gray-800 text-center mb-1">Камии захира</h4>
+                <p class="text-xs text-gray-600 text-center">Ашёҳои кам</p>
+            </a>
+            
+            <a href="{{ url_for('export_events') }}" class="flex flex-col items-center p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-200 group">
+                <div class="p-3 bg-indigo-100 rounded-full mb-3 group-hover:bg-indigo-200 transition-colors duration-200">
+                    <i class="fas fa-calendar text-indigo-600 text-xl"></i>
+                </div>
+                <h4 class="font-medium text-gray-800 text-center mb-1">Чорабиниҳо</h4>
+                <p class="text-xs text-gray-600 text-center">Ҳама чорабиниҳо</p>
+            </a>
+        </div>
+        
+        <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div class="flex items-start">
+                <i class="fas fa-info-circle text-blue-500 mt-0.5 mr-3"></i>
+                <div>
+                    <p class="text-sm text-gray-700">
+                        Ҳама ҳисоботҳо ба формати Excel (XLSX) содир карда мешаванд. 
+                        Барои дидани маълумотҳои пурра ва таҳлили бештар файлҳоро дар Excel кушоед.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Charts Section -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -140,4 +236,66 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Add CSS for dropdown menu -->
+<style>
+.dropdown-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+.dropdown-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms, transform 200ms;
+}
+.dropdown-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+.dropdown-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 200ms, transform 200ms;
+}
+</style>
+
+<!-- Add JavaScript for dropdown -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle dropdown menu
+    const exportButton = document.querySelector('.group > button');
+    const dropdownMenu = document.querySelector('.group > div');
+    
+    if (exportButton && dropdownMenu) {
+        // Toggle dropdown on click
+        exportButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            dropdownMenu.classList.toggle('hidden');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!exportButton.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+        
+        // Close dropdown when clicking on a link
+        dropdownMenu.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                dropdownMenu.classList.add('hidden');
+            });
+        });
+    }
+    
+    // Add confirmation for exports
+    document.querySelectorAll('a[href*="export"]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            if (!confirm('Шумо ҳисоботро ба Excel содир кардан мехоҳед?')) {
+                e.preventDefault();
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
