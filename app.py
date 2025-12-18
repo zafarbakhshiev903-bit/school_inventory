@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
@@ -10,6 +10,9 @@ from datetime import datetime, timedelta, timezone
 from flask_mail import Mail, Message
 import os
 from dotenv import load_dotenv
+import io
+from sqlalchemy import text
+import pandas as pd
 
 # Корректная обработка UTC для Python 3.11+ и < 3.11
 try:
@@ -29,6 +32,7 @@ if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 
 # Email configuration
@@ -44,10 +48,10 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 mail = Mail(app)
 
-# --- Удалены неиспользуемые функции load_items/save_items (JSON) ---
-
 # Database Models
 class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -77,6 +81,8 @@ class User(UserMixin, db.Model):
     usage_logs = db.relationship('UsageLog', backref='user', lazy=True)
 
 class Category(db.Model):
+    __tablename__ = 'categories'
+    
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False, unique=True)
     description = db.Column(db.Text)
@@ -86,17 +92,19 @@ class Category(db.Model):
     items = db.relationship('InventoryItem', backref='category', lazy=True)
 
 class InventoryItem(db.Model):
+    __tablename__ = 'inventory_items'
+    
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
-    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     available_quantity = db.Column(db.Integer, nullable=False, default=1)
     min_quantity = db.Column(db.Integer, default=1)
     location = db.Column(db.String(100))
     condition = db.Column(db.String(20), default='good')  # excellent, good, fair, poor
     purchase_date = db.Column(db.Date)
-    purchase_price = db.Column(db.Float) # <-- Должно быть Float
+    purchase_price = db.Column(db.Float)
     barcode = db.Column(db.String(50), unique=True)
     responsible_person = db.Column(db.String(100))
     status = db.Column(db.String(20), default='available')  # available, maintenance, disposed
@@ -108,9 +116,11 @@ class InventoryItem(db.Model):
     usage_logs = db.relationship('UsageLog', backref='item', lazy=True)
 
 class Reservation(db.Model):
+    __tablename__ = 'reservations'
+    
     id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey('inventory_item.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     start_time = db.Column(db.DateTime(timezone=True), nullable=False)
     end_time = db.Column(db.DateTime(timezone=True), nullable=False)
@@ -118,7 +128,7 @@ class Reservation(db.Model):
     status = db.Column(db.String(20), default='pending')  # pending, approved, active, completed, cancelled
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(UTC))
-    approved_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     approved_at = db.Column(db.DateTime(timezone=True))
 
     # связи обратно к User
@@ -132,14 +142,14 @@ class Reservation(db.Model):
         back_populates='approvals',
         foreign_keys=[approved_by]
     )
-    
-    # --- Удален багги __init__ ---
 
 class UsageLog(db.Model):
+    __tablename__ = 'usage_logs'
+    
     id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey('inventory_item.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    reservation_id = db.Column(db.Integer, db.ForeignKey('reservation.id'))
+    item_id = db.Column(db.Integer, db.ForeignKey('inventory_items.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    reservation_id = db.Column(db.Integer, db.ForeignKey('reservations.id'))
     action = db.Column(db.String(20), nullable=False)  # borrowed, returned, reserved, cancelled
     quantity = db.Column(db.Integer, default=1)
     timestamp = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(UTC))
@@ -148,6 +158,8 @@ class UsageLog(db.Model):
     condition_after = db.Column(db.String(20))
 
 class Event(db.Model):
+    __tablename__ = 'events'
+    
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
@@ -156,14 +168,16 @@ class Event(db.Model):
     end_time = db.Column(db.DateTime(timezone=True))
     location = db.Column(db.String(100))
     target_audience = db.Column(db.String(100))  # all, teachers, parents, students, class_1a, etc.
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(UTC))
     send_notifications = db.Column(db.Boolean, default=True)
     notification_sent = db.Column(db.Boolean, default=False)
 
 class NotificationSubscription(db.Model):
+    __tablename__ = 'notification_subscriptions'
+    
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     event_type = db.Column(db.String(50), nullable=False)
     target_group = db.Column(db.String(50))  # all, class_1a, teachers, etc.
     email_enabled = db.Column(db.Boolean, default=True)
@@ -213,7 +227,6 @@ class InventoryForm(FlaskForm):
         ('fair', 'Удовлетворительное'),
         ('poor', 'Плохое')
     ])
-    # ИСПРАВЛЕНО: с IntegerField на FloatField + валидаторы
     purchase_price = FloatField('Стоимость покупки', validators=[Optional(), NumberRange(min=0)])
     barcode = StringField('Штрихкод')
     responsible_person = StringField('Ответственное лицо')
@@ -239,10 +252,7 @@ class ReservationForm(FlaskForm):
         self.item_id.choices = [(i.id, i.name) for i in InventoryItem.query.filter_by(is_reservable=True).all()]
 
     def validate_end_time(self, field):
-        # Проверяем, что оба поля заполнены
         if self.start_time.data and field.data:
-            # Сравниваем как naive, т.к. DateTimeLocalField не дает timezone.
-            # Часовой пояс (UTC) будет добавлен при сохранении в маршруте.
             if field.data <= self.start_time.data:
                 raise ValidationError('Вақти анҷом бояд аз вақти оғоз дертар бошад')
 
@@ -266,7 +276,6 @@ class EventForm(FlaskForm):
     target_audience = StringField('Целевая аудитория', validators=[Optional(), Length(max=100)])
     send_notifications = BooleanField('Отправить уведомления', default=True)
 
-    # Добавлена валидация времени окончания
     def validate_end_time(self, field):
         if self.start_time.data and field.data:
             if field.data <= self.start_time.data:
@@ -289,7 +298,6 @@ def dashboard():
         
         recent_logs = UsageLog.query.order_by(UsageLog.timestamp.desc()).limit(5).all()
         
-        # Запрос теперь использует глобальную UTC
         upcoming_events = Event.query.filter(
             Event.start_time > datetime.now(UTC)
         ).order_by(Event.start_time).limit(5).all()
@@ -304,7 +312,6 @@ def dashboard():
     except Exception as e:
         print(f"Error in dashboard route: {e}")
         flash('Произошла ошибка при загрузке данных', 'error')
-        # ИСПРАВЛЕНО: передаем значения по умолчанию, чтобы шаблон не упал
         return render_template('dashboard.html',
                                total_items=0,
                                available_items=0,
@@ -356,7 +363,7 @@ def register():
             full_name=form.full_name.data,
             department=form.department.data,
             phone=form.phone.data,
-            role='teacher' # Роль по умолчанию
+            role='teacher'
         )
         
         db.session.add(user)
@@ -404,9 +411,6 @@ def edit_inventory(item_id):
 
         item.available_quantity += quantity_diff
         item.available_quantity = max(0, item.available_quantity)
-
-        # 'updated_at' обновится автоматически благодаря onupdate в модели
-        # item.updated_at = datetime.now(UTC) 
 
         db.session.commit()
         
@@ -472,7 +476,6 @@ def reservations():
     else:
         reservations = Reservation.query.filter_by(user_id=current_user.id).order_by(Reservation.created_at.desc()).all()
     
-    # ИСПРАВЛЕНО: Лишний цикл для исправления TZ удален, т.к. данные в БД теперь aware.
     now = datetime.now(UTC)
     
     return render_template('reservations.html', 
@@ -493,16 +496,14 @@ def add_reservation():
             flash('Недостаточно доступного количества!')
             return render_template('add_reservation.html', form=form)
         
-        # Конвертируем naive datetime из формы в aware UTC
         start_time_utc = form.start_time.data.replace(tzinfo=UTC)
         end_time_utc = form.end_time.data.replace(tzinfo=UTC)
 
-        # Check for conflicts
         conflicts = Reservation.query.filter(
             Reservation.item_id == form.item_id.data,
             Reservation.status.in_(['approved', 'active']),
-            Reservation.start_time < end_time_utc,  # Сравниваем с UTC
-            Reservation.end_time > start_time_utc   # Сравниваем с UTC
+            Reservation.start_time < end_time_utc,
+            Reservation.end_time > start_time_utc
         ).all()
         
         total_reserved = sum(r.quantity for r in conflicts)
@@ -514,8 +515,8 @@ def add_reservation():
             item_id=form.item_id.data,
             user_id=current_user.id,
             quantity=form.quantity.data,
-            start_time=start_time_utc, # Сохраняем UTC
-            end_time=end_time_utc,   # Сохраняем UTC
+            start_time=start_time_utc,
+            end_time=end_time_utc,
             purpose=form.purpose.data,
             notes=form.notes.data,
             status='approved' if current_user.role == 'admin' else 'pending'
@@ -524,7 +525,7 @@ def add_reservation():
         
         if current_user.role == 'admin':
             reservation.approved_by = current_user.id
-            reservation.approved_at = datetime.now(UTC) # Используем UTC
+            reservation.approved_at = datetime.now(UTC)
             item.available_quantity -= form.quantity.data
         
         db.session.commit()
@@ -558,12 +559,11 @@ def approve_reservation(id):
     if item.available_quantity >= reservation.quantity:
         reservation.status = 'approved'
         reservation.approved_by = current_user.id
-        reservation.approved_at = datetime.now(UTC) # Используем UTC
+        reservation.approved_at = datetime.now(UTC)
         item.available_quantity -= reservation.quantity
         
         db.session.commit()
         
-        # Send notification email
         send_reservation_notification(reservation, 'approved')
         
         flash('Резервирование одобрено!')
@@ -581,7 +581,6 @@ def complete_reservation(id):
         flash('Недостаточно прав!')
         return redirect(url_for('reservations'))
     
-    # Только 'active' или 'approved' брони можно завершить
     if reservation.status not in ['active', 'approved']:
          flash('Это резервирование не может быть завершено (статус: {reservation.status}).')
          return redirect(url_for('reservations'))
@@ -625,7 +624,6 @@ def add_event():
     form = EventForm()
     
     if form.validate_on_submit():
-        # Конвертируем naive datetime в aware UTC
         start_time_utc = form.start_time.data.replace(tzinfo=UTC)
         end_time_utc = form.end_time.data.replace(tzinfo=UTC) if form.end_time.data else None
 
@@ -672,6 +670,333 @@ def reports():
                          category_stats=category_stats,
                          low_stock=low_stock)
 
+# Новые маршруты для экспорта отчетов в Excel
+@app.route('/export/inventory')
+@login_required
+def export_inventory():
+    if current_user.role != 'admin':
+        flash('Недостаточно прав!', 'error')
+        return redirect(url_for('reports'))
+    
+    try:
+        # Получаем все данные инвентаря
+        items = InventoryItem.query.all()
+        
+        # Создаем DataFrame
+        data = []
+        for item in items:
+            data.append({
+                'ID': item.id,
+                'Название': item.name,
+                'Описание': item.description or '',
+                'Категория': item.category.name if item.category else '',
+                'Количество': item.quantity,
+                'Доступно': item.available_quantity,
+                'Минимальное количество': item.min_quantity,
+                'Местоположение': item.location or '',
+                'Состояние': item.condition,
+                'Дата покупки': item.purchase_date.strftime('%Y-%m-%d') if item.purchase_date else '',
+                'Стоимость': item.purchase_price or 0,
+                'Штрихкод': item.barcode or '',
+                'Ответственный': item.responsible_person or '',
+                'Статус': item.status,
+                'Для резервирования': 'Да' if item.is_reservable else 'Нет',
+                'Дата создания': item.created_at.strftime('%Y-%m-%d %H:%M'),
+                'Дата обновления': item.updated_at.strftime('%Y-%m-%d %H:%M') if item.updated_at else ''
+            })
+        
+        df = pd.DataFrame(data)
+        
+        # Создаем Excel файл в памяти
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Инвентарь', index=False)
+            
+            # Настраиваем ширину колонок
+            worksheet = writer.sheets['Инвентарь']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        # Возвращаем файл
+        return Response(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment;filename=inventory_report.xlsx"}
+        )
+        
+    except Exception as e:
+        print(f"Error exporting inventory: {e}")
+        flash(f'Ошибка при экспорте: {str(e)}', 'error')
+        return redirect(url_for('reports'))
+
+@app.route('/export/reservations')
+@login_required
+def export_reservations():
+    if current_user.role != 'admin':
+        flash('Недостаточно прав!', 'error')
+        return redirect(url_for('reports'))
+    
+    try:
+        # Получаем все резервирования
+        reservations = Reservation.query.order_by(Reservation.created_at.desc()).all()
+        
+        # Создаем DataFrame
+        data = []
+        for res in reservations:
+            data.append({
+                'ID': res.id,
+                'Предмет': res.item.name if res.item else '',
+                'Пользователь': res.user.full_name if res.user else '',
+                'Email пользователя': res.user.email if res.user else '',
+                'Количество': res.quantity,
+                'Начало': res.start_time.strftime('%Y-%m-%d %H:%M'),
+                'Окончание': res.end_time.strftime('%Y-%m-%d %H:%M'),
+                'Цель': res.purpose or '',
+                'Статус': res.status,
+                'Заметки': res.notes or '',
+                'Дата создания': res.created_at.strftime('%Y-%m-%d %H:%M'),
+                'Утверждено': 'Да' if res.approved_by else 'Нет',
+                'Утвердил': res.approver.full_name if res.approver else '',
+                'Дата утверждения': res.approved_at.strftime('%Y-%m-%d %H:%M') if res.approved_at else ''
+            })
+        
+        df = pd.DataFrame(data)
+        
+        # Создаем Excel файл в памяти
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Резервирования', index=False)
+            
+            # Настраиваем ширину колонок
+            worksheet = writer.sheets['Резервирования']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        # Возвращаем файл
+        return Response(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment;filename=reservations_report.xlsx"}
+        )
+        
+    except Exception as e:
+        print(f"Error exporting reservations: {e}")
+        flash(f'Ошибка при экспорте: {str(e)}', 'error')
+        return redirect(url_for('reports'))
+
+@app.route('/export/usage')
+@login_required
+def export_usage():
+    if current_user.role != 'admin':
+        flash('Недостаточно прав!', 'error')
+        return redirect(url_for('reports'))
+    
+    try:
+        # Получаем все логи использования
+        logs = UsageLog.query.order_by(UsageLog.timestamp.desc()).all()
+        
+        # Создаем DataFrame
+        data = []
+        for log in logs:
+            data.append({
+                'ID': log.id,
+                'Предмет': log.item.name if log.item else '',
+                'Пользователь': log.user.full_name if log.user else '',
+                'Email пользователя': log.user.email if log.user else '',
+                'Действие': log.action,
+                'Количество': log.quantity,
+                'Дата и время': log.timestamp.strftime('%Y-%m-%d %H:%M'),
+                'Заметки': log.notes or '',
+                'Состояние до': log.condition_before or '',
+                'Состояние после': log.condition_after or '',
+                'ID резервирования': log.reservation_id or ''
+            })
+        
+        df = pd.DataFrame(data)
+        
+        # Создаем Excel файл в памяти
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Использование', index=False)
+            
+            # Настраиваем ширину колонок
+            worksheet = writer.sheets['Использование']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        # Возвращаем файл
+        return Response(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment;filename=usage_report.xlsx"}
+        )
+        
+    except Exception as e:
+        print(f"Error exporting usage logs: {e}")
+        flash(f'Ошибка при экспорте: {str(e)}', 'error')
+        return redirect(url_for('reports'))
+
+@app.route('/export/low_stock')
+@login_required
+def export_low_stock():
+    if current_user.role != 'admin':
+        flash('Недостаточно прав!', 'error')
+        return redirect(url_for('reports'))
+    
+    try:
+        # Получаем предметы с низким запасом
+        low_stock = InventoryItem.query.filter(
+            InventoryItem.available_quantity <= InventoryItem.min_quantity
+        ).all()
+        
+        # Создаем DataFrame
+        data = []
+        for item in low_stock:
+            data.append({
+                'ID': item.id,
+                'Название': item.name,
+                'Категория': item.category.name if item.category else '',
+                'Количество': item.quantity,
+                'Доступно': item.available_quantity,
+                'Минимальное количество': item.min_quantity,
+                'Дефицит': item.min_quantity - item.available_quantity,
+                'Местоположение': item.location or '',
+                'Ответственный': item.responsible_person or '',
+                'Статус': item.status,
+                'Дата обновления': item.updated_at.strftime('%Y-%m-%d %H:%M') if item.updated_at else ''
+            })
+        
+        df = pd.DataFrame(data)
+        
+        # Создаем Excel файл в памяти
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Низкий запас', index=False)
+            
+            # Настраиваем ширину колонок
+            worksheet = writer.sheets['Низкий запас']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        # Возвращаем файл
+        return Response(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment;filename=low_stock_report.xlsx"}
+        )
+        
+    except Exception as e:
+        print(f"Error exporting low stock: {e}")
+        flash(f'Ошибка при экспорте: {str(e)}', 'error')
+        return redirect(url_for('reports'))
+
+@app.route('/export/events')
+@login_required
+def export_events():
+    if current_user.role != 'admin':
+        flash('Недостаточно прав!', 'error')
+        return redirect(url_for('reports'))
+    
+    try:
+        # Получаем все события
+        events = Event.query.order_by(Event.start_time.desc()).all()
+        
+        # Создаем DataFrame
+        data = []
+        for event in events:
+            data.append({
+                'ID': event.id,
+                'Название': event.title,
+                'Описание': event.description or '',
+                'Тип события': event.event_type,
+                'Начало': event.start_time.strftime('%Y-%m-%d %H:%M'),
+                'Окончание': event.end_time.strftime('%Y-%m-%d %H:%M') if event.end_time else '',
+                'Место': event.location or '',
+                'Целевая аудитория': event.target_audience or '',
+                'Создатель': User.query.get(event.created_by).full_name if User.query.get(event.created_by) else '',
+                'Дата создания': event.created_at.strftime('%Y-%m-%d %H:%M'),
+                'Уведомления отправлены': 'Да' if event.notification_sent else 'Нет'
+            })
+        
+        df = pd.DataFrame(data)
+        
+        # Создаем Excel файл в памяти
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='События', index=False)
+            
+            # Настраиваем ширину колонок
+            worksheet = writer.sheets['События']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        # Возвращаем файл
+        return Response(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment;filename=events_report.xlsx"}
+        )
+        
+    except Exception as e:
+        print(f"Error exporting events: {e}")
+        flash(f'Ошибка при экспорте: {str(e)}', 'error')
+        return redirect(url_for('reports'))
+
 # Utility functions
 def send_reservation_notification(reservation, status):
     if not app.config['MAIL_USERNAME'] or not app.config['MAIL_PASSWORD']:
@@ -685,8 +1010,6 @@ def send_reservation_notification(reservation, status):
             recipients=[reservation.user.email]
         )
         
-        # Локализация времени для пользователя (например, в +5)
-        # В реальном приложении часовой пояс пользователя нужно хранить
         local_tz = timezone(timedelta(hours=5)) 
         start_local = reservation.start_time.astimezone(local_tz).strftime('%d.%m.%Y %H:%M')
         end_local = reservation.end_time.astimezone(local_tz).strftime('%d.%m.%Y %H:%M')
@@ -700,13 +1023,7 @@ def send_reservation_notification(reservation, status):
 <p><b>Цель:</b> {reservation.purpose}</p>
 <p>Пожалуйста, заберите предмет в указанное время.</p>
             '''
-        # Добавьте другие статусы (e.g., 'cancelled', 'pending') по необходимости
         
-        # Запуск отправки в отдельном потоке, чтобы не блокировать запрос
-        # (Хотя для этого лучше использовать Celery или RQ)
-        # mail.send(msg) # <-- Синхронная отправка
-        
-        # Асинхронная отправка (простой вариант)
         from threading import Thread
         thr = Thread(target=send_async_email, args=[app, msg])
         thr.start()
@@ -722,13 +1039,11 @@ def send_async_email(flask_app, msg):
         except Exception as e:
             print(f"Error sending async email: {e}")
 
-
 def send_event_notifications(event):
     if not app.config['MAIL_USERNAME']:
         print("Email configuration missing, skipping event notification.")
         return
     
-    # TODO: Реализовать фильтрацию пользователей по event.target_audience
     users = User.query.all() 
     
     local_tz = timezone(timedelta(hours=5))
@@ -755,9 +1070,11 @@ def send_event_notifications(event):
             except Exception as e:
                 print(f"Error sending event email to {user.email}: {e}")
 
-# ДОБАВЛЕНО: Блок для запуска и инициализации БД
+# ДОБАВЛЕНО: Требуемые зависимости для работы
+# Для экспорта в Excel нужно установить: pandas, openpyxl
+# pip install pandas openpyxl
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    app.run()
-
+    app.run(debug=True)
