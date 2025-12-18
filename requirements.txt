@@ -8,7 +8,7 @@ Werkzeug==2.3.7
 python-dotenv==1.0.0
 APScheduler==3.10.4
 email-validator==2.0.0
-gunicorn
-psycopg2-binary
-pandas
-openpyxl
+gunicorn==23.0.0
+psycopg2-binary==2.9.11
+pandas==2.3.3
+openpyxl==3.1.5
