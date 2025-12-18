@@ -34,6 +34,8 @@ if DATABASE_URL.startswith("postgres://"):
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Добавьте SECRET_KEY здесь
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
 
 # Email configuration
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
@@ -41,11 +43,14 @@ app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME')
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+login_manager.login_message = 'Пожалуйста, войдите для доступа к этой странице.'
+login_manager.login_message_category = 'info'
 mail = Mail(app)
 
 # Database Models
@@ -284,6 +289,11 @@ class EventForm(FlaskForm):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+# Добавим маршрут для health check (важно для Render)
+@app.route('/health')
+def health():
+    return 'OK', 200
 
 @app.route('/')
 @login_required
@@ -1070,6 +1080,25 @@ def send_event_notifications(event):
             except Exception as e:
                 print(f"Error sending event email to {user.email}: {e}")
 
+# Создание начального администратора при первом запуске
+def create_initial_admin():
+    with app.app_context():
+        # Проверяем, есть ли уже администратор
+        admin = User.query.filter_by(role='admin').first()
+        if not admin:
+            # Создаем администратора по умолчанию
+            admin = User(
+                username='admin',
+                email='admin@school.edu',
+                password_hash=generate_password_hash('admin123'),
+                full_name='Администратор Системы',
+                role='admin',
+                department='Администрация'
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("Создан администратор по умолчанию: admin / admin123")
+
 # ДОБАВЛЕНО: Требуемые зависимости для работы
 # Для экспорта в Excel нужно установить: pandas, openpyxl
 # pip install pandas openpyxl
@@ -1077,4 +1106,8 @@ def send_event_notifications(event):
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+        create_initial_admin()
+    
+    # Запуск в production режиме
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
