@@ -1102,6 +1102,7 @@ def create_initial_admin():
 # ДОБАВЛЕНО: Требуемые зависимости для работы
 # Для экспорта в Excel нужно установить: pandas, openpyxl
 # pip install pandas openpyxl
+# ... остальной код ...
 
 if __name__ == "__main__":
     with app.app_context():
