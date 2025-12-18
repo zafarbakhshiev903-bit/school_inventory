@@ -1108,8 +1108,18 @@ def create_initial_admin():
 
 if __name__ == "__main__":
     with app.app_context():
+        # Удаляем все существующие таблицы (осторожно!)
+        print("Удаление старых таблиц...")
+        db.drop_all()  # Это удалит все данные!
+        
+        # Создаем таблицы заново
+        print("Создание новых таблиц...")
         db.create_all()
+        
+        # Создаем начального администратора
         create_initial_admin()
+    
+    print("База данных успешно обновлена.")
     
     # Определяем порт для Render
     port = int(os.environ.get("PORT", 10000))
